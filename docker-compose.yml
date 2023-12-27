@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+
+  # Nginx
+  nginx:
+    image: k44sh/nginx
+    container_name: nginx
+    hostname: nginx
+    restart: always
+    networks:
+      - net-front
+    ports:
+      - "80:8080/tcp"
+    volumes:
+      - web-config:/etc/nginx/:rw
+      - web-data:/var/www/:ro
+    env_file:
+      - .env
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 32000
+        hard: 40000
+
+# Networks
+networks:
+  net-front:
+    name: net-front
+    enable_ipv6: true
+
+# Volumes
+volumes:
+  web-config:
+    driver: local
+    driver_opts:
+      type: "none"
+      o: "bind"
+      device: "./config"
+  web-data:
+    driver: local
+    driver_opts:
+      type: "none"
+      o: "bind"
+      device: "./data"

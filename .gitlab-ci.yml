@@ -1,0 +1,153 @@
+image: alpine:latest
+
+stages:
+  - Build
+  - Test
+  - Publish
+
+variables:
+  DOCKER_DRIVER: overlay2
+
+services:
+  - name: docker:dind
+
+Container build:
+  stage: Build
+  image:
+    name: docker:latest
+  variables:
+    GIT_STRATEGY: clone
+  rules:
+    - if: $BUILD == "no"
+      when: never
+    - if: $FORCE == "yes"
+    - if: $CI_COMMIT_REF_NAME =~ /^((dev|dev-.+)|(v\d.+))$/
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  tags:
+    - saas-linux-xlarge-amd64
+  before_script:
+    - echo -n $CI_JOB_TOKEN | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+  after_script:
+    - docker logout $CI_REGISTRY
+  script:
+    - |
+      apk --update --no-cache add git
+      docker buildx create --use --name multi-arch
+      docker buildx bake --print quick
+      docker buildx bake -f docker-bake.hcl quick
+
+Automatic tests:
+  stage: Test
+  image:
+    name: docker:latest
+  variables:
+    GIT_STRATEGY: none
+  needs:
+    - job: Container build
+      optional: true
+  rules:
+    - if: $BUILD == "no"
+      when: never
+    - if: $FORCE == "yes"
+    - if: $CI_COMMIT_REF_NAME =~ /^((dev|dev-.+)|(v\d.+))$/
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  tags:
+    - saas-linux-medium-amd64
+  before_script:
+    - echo -n $CI_JOB_TOKEN | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+  after_script:
+    - docker logout $CI_REGISTRY
+  script:
+    - apk --update --no-cache add curl
+    - |
+      docker run --rm -d --name $CI_PROJECT_NAME $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+      for i in $(seq 120); do
+        status=$(docker inspect -f '{{ .State.Health.Status }}' $CI_PROJECT_NAME 2>/dev/null)
+        if [[ $? -eq 0 ]]; then
+          if [[ "${status}" == "healthy" ]]; then
+            docker logs $CI_PROJECT_NAME
+            echo -e "\n✅ The container is \e[1;32mhealthy\e[0m after \e[1;5m${i}\e[0m seconds\n"
+            docker stop $CI_PROJECT_NAME >/dev/null 2>&1
+            exit 0
+          elif [[ "${status}" == "unhealthy" ]]; then
+            echo -e "❌ The container is \e[1;33munhealthy\e[0m"
+            docker stop $CI_PROJECT_NAME >/dev/null 2>&1
+            exit 1
+          elif [[ "${status}" == "starting" ]]; then
+            echo "... starting"
+          else
+            echo -e "❓ The container is in \e[1;31munknown\e[0m state ($status)"
+            docker stop $CI_PROJECT_NAME >/dev/null 2>&1
+            exit 1
+          fi
+        else
+          echo -e "❌ \e[1;31mDocker error\e[0m"
+          docker logs $CI_PROJECT_NAME
+          exit 1
+        fi
+        sleep 1
+      done
+
+Container publish:
+  stage: Publish
+  image:
+    name: docker:latest
+  variables:
+    GIT_STRATEGY: clone
+  needs:
+    - job: Automatic tests
+      optional: false
+  rules:
+    - if: $BUILD == "no"
+      when: never
+    - if: $FORCE == "yes"
+    - if: $CI_COMMIT_REF_NAME =~ /^(dev|(v\d.+))$/
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+  tags:
+    - saas-linux-xlarge-amd64
+  before_script:
+    - echo -n $CI_JOB_TOKEN | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+    - echo -n $GITHUB_TOKEN | docker login -u $GITHUB_USER --password-stdin ghcr.io
+    - echo -n $DOCKERHUB_TOKEN | docker login -u $DOCKERHUB_USER --password-stdin docker.io
+  after_script:
+    - docker logout $CI_REGISTRY
+    - docker logout ghcr.io
+    - docker logout docker.io
+  script:
+    - apk --update --no-cache add git
+    - >
+      docker run --rm
+      -e GEOIPUPDATE_ACCOUNT_ID="$MM_ACCOUNT"
+      -e GEOIPUPDATE_LICENSE_KEY="$MM_LICENSE"
+      -e GEOIPUPDATE_EDITION_IDS="GeoLite2-ASN GeoLite2-City GeoLite2-Country"
+      -v rootfs/geoip2:/usr/share/GeoIP
+      ghcr.io/maxmind/geoipupdate
+    - |
+      docker buildx create --use --name multi-arch
+      if [[ "$CI_PIPELINE_SOURCE" == "schedule" ]]; then
+        echo -e "\n⏰ Source :\e[1;32m Scheduled\e[0m"
+        docker buildx bake --print schedule
+        docker buildx bake -f docker-bake.hcl schedule
+      else
+        if [[ ! -z "$CI_COMMIT_BRANCH" ]]; then
+          echo -e "\n🔨 Version :\e[1;32m $CI_COMMIT_BRANCH\e[0m"
+          if [[ "$CI_COMMIT_BRANCH" == "dev" ]]; then
+            docker buildx bake --print dev
+            docker buildx bake -f docker-bake.hcl dev
+          fi
+        fi
+        if [[ ! -z "$CI_COMMIT_TAG" ]]; then
+          tag=$(git tag --list --sort=creatordate | tail -1)
+          docker manifest inspect $CI_REGISTRY_IMAGE:$tag > /dev/null 2>&1 || exit_code=$?
+          if [[ $exit_code != 0 ]]; then
+            echo -e "\n🏁 Tag :\e[1;32m ${tag}\e[0m"
+            tag=$tag docker buildx bake --print tag
+            tag=$tag docker buildx bake -f docker-bake.hcl tag
+          else
+            echo -e "\n⛔ Tag :\e[1;32m ${tag}\e[0m already exist in registry."
+            exit 0
+          fi
+        fi
+      fi

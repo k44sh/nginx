@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+set -e
+
+# Nginx
+curl --head --fail http://127.0.0.1:@PORT@/status

@@ -122,7 +122,7 @@ Container publish:
       -e GEOIPUPDATE_ACCOUNT_ID="$MM_ACCOUNT"
       -e GEOIPUPDATE_LICENSE_KEY="$MM_LICENSE"
       -e GEOIPUPDATE_EDITION_IDS="GeoLite2-ASN GeoLite2-City GeoLite2-Country"
-      -v rootfs/geoip2:/usr/share/GeoIP
+      -v ./rootfs/geoip2:/usr/share/GeoIP
       ghcr.io/maxmind/geoipupdate
     - |
       docker buildx create --use --name multi-arch

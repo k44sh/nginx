@@ -7,6 +7,7 @@ FROM golang:alpine as geoip2
 
 RUN apk add --update git
 ENV GOPATH=/opt/geoipupdate
+ENV GOMAXPROCS=1
 RUN VERSION=$(git ls-remote --tags "https://github.com/maxmind/geoipupdate"| \
     awk '{print $2}' | sed 's/refs\/tags\///;s/\..*$//' | sort -uV | tail -1) \
     && go install github.com/maxmind/geoipupdate/$VERSION/cmd/geoipupdate@latest

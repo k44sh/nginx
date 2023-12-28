@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://gitlab.com/cyberpnkz/nginx" target="_blank"><img width="75%" src="https://raw.githubusercontent.com/k44sh/nginx/main/.nginx.png"></a>
+  <a href="https://gitlab.com/cyberpnkz/nginx" target="_blank"><img width="90%" src="https://raw.githubusercontent.com/k44sh/nginx/main/.nginx.png"></a>
 </p>
 
 <p align="center">
@@ -104,7 +104,7 @@ docker run -d --name nginx \
   --ulimit nofile=32000:40000 \
   -p 80:8000/tcp \
   -e TZ="America/Toronto" \
-  -e PORT="plop" \
+  -e PORT="8000" \
   -e PUID=1002 \
   -e PGID=1002 \
   -e MM_ACCOUNT="xxxxxx" \

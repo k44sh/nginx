@@ -47,7 +47,7 @@ ___
 #### VTS Module
 
 <p align="center">
-  <a href="https://gitlab.com/cyberpnkz/nginx" target="_blank"><img width="75%" src="https://raw.githubusercontent.com/k44sh/nginx/main/.stats.png"></a>
+  <a href="https://gitlab.com/cyberpnkz/nginx" target="_blank"><img width="90%" src="https://raw.githubusercontent.com/k44sh/nginx/main/.stats.png"></a>
 </p>
 
 ## Multi Platform Images
@@ -91,7 +91,7 @@ docker compose logs -f
 You can also use the following minimal command:
 
 ```shell
-docker run -d --name nginx -p 80:8000 k44sh/nginx:latest 
+docker run -d --name nginx -p 80:8080 k44sh/nginx:latest 
 docker logs -f nginx
 ```
 

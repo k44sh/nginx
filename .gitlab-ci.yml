@@ -25,7 +25,7 @@ Container build:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   tags:
-    - saas-linux-xlarge-amd64
+    - saas-linux-medium-amd64
   before_script:
     - echo -n $CI_JOB_TOKEN | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
   after_script:
@@ -106,7 +106,7 @@ Container publish:
     - if: $CI_COMMIT_REF_NAME =~ /^(dev|(v\d.+))$/
     - if: $CI_PIPELINE_SOURCE == "schedule"
   tags:
-    - saas-linux-xlarge-amd64
+    - ubuntu-docker-amd64
   before_script:
     - echo -n $CI_JOB_TOKEN | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
     - echo -n $GITHUB_TOKEN | docker login -u $GITHUB_USER --password-stdin ghcr.io
@@ -116,7 +116,7 @@ Container publish:
     - docker logout ghcr.io
     - docker logout docker.io
   script:
-    - apk --update --no-cache add git
+    #- apk --update --no-cache add git
     - >
       docker run --rm
       -e GEOIPUPDATE_ACCOUNT_ID="$MM_ACCOUNT"

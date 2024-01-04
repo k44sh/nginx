@@ -67,7 +67,7 @@ ___
 | `MM_ACCOUNT` | Your MaxMind account ID                                |
 | `MM_LICENSE` | Your MaxMind license key                               |
 
-> ℹ️ In the absence of MaxMinx (GeoIP2) information, there will be no cron for updating the database
+> ℹ️ In the absence of MaxMind (GeoIP2) information, there will be no cron for updating the database
 
 ## Volumes
 

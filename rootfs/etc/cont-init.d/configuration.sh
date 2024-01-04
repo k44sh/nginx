@@ -20,6 +20,7 @@ blue="${cli}1;34m"
 echo -e "\n${bold}Nginx Configuration${norm}\n"
 
 # General
+GEOIP2_CONF=${GEOIP2_CONF:-/etc/geoip2.conf}
 GEOIP2_PATH=${GEOIP2_PATH:-/geoip2}
 MM_ACCOUNT=${MM_ACCOUNT:-}
 MM_LICENSE=${MM_LICENSE:-}
@@ -44,11 +45,12 @@ sed -i -e "s,@PORT@,${PORT},g" /usr/local/bin/healthcheck
 if [[ ! -z "$MM_ACCOUNT" ]] && [[ ! -z "$MM_LICENSE" ]]; then
   echo -e "  ${norm}[${green}+${norm}] Settings GeoIP2 with ${green}${MM_ACCOUNT}${norm}"
   mkdir -p ${GEOIP2_PATH}
-  cat > /etc/GeoIP.conf <<EOL
+  cat > ${GEOIP2_CONF} <<EOL
 AccountID ${MM_ACCOUNT}
 LicenseKey ${MM_LICENSE}
 EditionIDs GeoLite2-ASN GeoLite2-City GeoLite2-Country
 EOL
+  (sleep 5 && geoipupdate -v -f ${GEOIP2_CONF} -d ${GEOIP2_PATH}) &
 fi
 
 # Fix permissions
@@ -69,13 +71,8 @@ chown -R ${USER}: \
   /var/cache/nginx \
   /var/lib/nginx \
   /var/log/nginx \
-  /var/run/nginx
-if (mktemp -p /var/www/ test_file.XXXXXX > /dev/null 2>&1); then
-  rm -f /var/www/test_file.*
-  chown -R ${USER}: /var/www
-else
-  echo "    ${norm}[${blue}?${norm}] /var/www is in read-only mode"
-fi
+  /var/run/nginx \
+  ${SSL_PATH}
 
 # Services
 echo -e "  ${norm}[${green}+${norm}] Settings services\n"
@@ -89,7 +86,7 @@ EOL
 chmod +x /etc/services.d/nginx/run
 if [[ ! -z "$MM_ACCOUNT" ]] && [[ ! -z "$MM_LICENSE" ]]; then
   cat > /etc/crontabs/root   <<EOL
-0 0 * * * geoipupdate -v -f /etc/GeoIP.conf -d ${GEOIP2_PATH} >/proc/1/fd/1 2>/proc/1/fd/2
+0 0 * * * geoipupdate -v -f ${GEOIP2_CONF} -d ${GEOIP2_PATH} >/proc/1/fd/1 2>/proc/1/fd/2
 EOL
   mkdir -p /etc/services.d/cron
   cat > /etc/services.d/cron/run <<EOL

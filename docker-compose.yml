@@ -4,12 +4,12 @@ services:
 
   # Nginx
   nginx:
-    image: k44sh/nginx
+    image: k44sh/nginx:dev
     container_name: nginx
     hostname: nginx
     restart: always
     networks:
-      - net-front
+      - front
     ports:
       - "80:8080/tcp"
     volumes:
@@ -25,8 +25,8 @@ services:
 
 # Networks
 networks:
-  net-front:
-    name: net-front
+  front:
+    name: front
     enable_ipv6: true
 
 # Volumes

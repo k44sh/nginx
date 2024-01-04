@@ -36,6 +36,7 @@ RUN apk --update --no-cache add \
     nginx-mod-http-vts \
     nginx-mod-rtmp \
     s6-overlay \
+    tzdata \
     && nginx -V && rm -rf /tmp/* /var/cache/apk/*
 
 RUN ln -sf /dev/stdout /var/log/nginx/access.log
@@ -50,4 +51,4 @@ EXPOSE 8080
 
 ENTRYPOINT [ "/init" ]
 
-HEALTHCHECK --interval=5s --timeout=5s --start-period=5s CMD /usr/local/bin/healthcheck
+HEALTHCHECK --interval=10s --timeout=5s --start-period=3s CMD /usr/local/bin/healthcheck

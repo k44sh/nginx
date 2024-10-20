@@ -1,20 +1,42 @@
-version: "3.9"
+name: nginx
 
 services:
 
-  # Nginx
+  ### Nginx with PHP
   nginx:
-    image: k44sh/nginx:dev
+    image: k44sh/nginx:latest
     container_name: nginx
     hostname: nginx
     restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:${PORT}/ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
-      - front
+      nginx:
+        ipv6_address: "fd42:4242::10"
     ports:
-      - "80:8080/tcp"
+      - "80:${PORT}/tcp"
+      - "1935:1935"
     volumes:
-      - web-config:/etc/nginx/:rw
-      - web-data:/var/www/:ro
+      - config:/etc/nginx/
+      - data:/var/www/
+      #- geoip:${GEOIP2_PATH}
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      PORT: ${PORT}
+      TZ: ${TZ}
+      GEOIP2_CONF: ${GEOIP2_CONF}
+      GEOIP2_PATH: ${GEOIP2_PATH}
+      MM_ACCOUNT: ${MM_ACCOUNT}
+      MM_LICENSE: ${MM_LICENSE}
+      MEMORY_LIMIT: ${MEMORY_LIMIT}
+      UPLOAD_MAX_SIZE: ${UPLOAD_MAX_SIZE}
+      CLEAR_ENV: ${CLEAR_ENV}
+      OPCACHE_MEM_SIZE: ${OPCACHE_MEM_SIZE}
+      MAX_FILE_UPLOADS: ${MAX_FILE_UPLOADS}
     env_file:
       - .env
     ulimits:
@@ -23,23 +45,38 @@ services:
         soft: 32000
         hard: 40000
 
-# Networks
+### Networks
 networks:
-  front:
-    name: front
+  nginx:
+    name: nginx
     enable_ipv6: true
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.name: "docker30"
+    ipam:
+      config:
+        - subnet: "10.42.42.0/24"
+        - subnet: "fd42:4242::/120"
 
-# Volumes
+### Volumes
 volumes:
-  web-config:
+  config:
     driver: local
     driver_opts:
       type: "none"
       o: "bind"
       device: "./config"
-  web-data:
+
+  data:
     driver: local
     driver_opts:
       type: "none"
       o: "bind"
       device: "./data"
+
+  #geoip:
+  #  driver: local
+  #  driver_opts:
+  #    type: "none"
+  #    o: "bind"
+  #    device: "./geoip"

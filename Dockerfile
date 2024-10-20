@@ -1,7 +1,9 @@
 ARG ALPINE_VERSION=latest
 ARG USER=docker
+ARG PUID=1000
+ARG PGID=1000
 
-FROM golang:alpine as geoip2
+FROM golang:alpine AS geoip2
 
 RUN apk add --update git
 ENV GOPATH=/opt/geoipupdate
@@ -10,13 +12,9 @@ RUN VERSION=$(git ls-remote --tags "https://github.com/maxmind/geoipupdate"| \
     awk '{print $2}' | sed 's/refs\/tags\///;s/\..*$//' | sort -uV | tail -1) \
     && go install github.com/maxmind/geoipupdate/$VERSION/cmd/geoipupdate@latest
 
-FROM alpine:${ALPINE_VERSION} as builder
+FROM alpine:${ALPINE_VERSION} AS builder
+ARG USER PUID PGID
 
-ENV TZ="UTC" \
-  PUID="1000" \
-  PGID="1000"
-
-ARG USER
 RUN apk --update --no-cache add \
     apache2-utils \
     bash \
@@ -74,7 +72,7 @@ RUN addgroup -g ${PGID} ${USER} \
   && nginx -v && php83 -v \
   && rm -rf /tmp/* /var/cache/apk/*
 
-  RUN touch /var/log/nginx/access.log \
+RUN touch /var/log/nginx/access.log \
   /var/log/nginx/error.log /var/log/nginx/stream.log \
   /var/log/php83/error.log /var/log/php83/access.log && \
   ln -sf /dev/stdout /var/log/nginx/access.log && \

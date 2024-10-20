@@ -61,16 +61,36 @@ EOL
   (sleep 5 && geoipupdate -v -f ${GEOIP2_CONF} -d ${GEOIP2_PATH}) &
 fi
 
-# Fix permissions
+# Setting permissions
 echo "  ${norm}[${green}+${norm}] Setting user mapping to ${green}${USER} (${PUID}:${PGID})${norm}"
 chown ${PUID}:${PGID} /proc/self/fd/1 /proc/self/fd/2 || true
-if [ -n "${PGID}" ] && [ "${PGID}" != "$(id -g ${USER})" ]; then
-  sed -i -e "s/^${USER}:\([^:]*\):[0-9]*/${USER}:\1:${PGID}/" /etc/group
-  sed -i -e "s/^${USER}:\([^:]*\):\([0-9]*\):[0-9]*/${USER}:\1:\2:${PGID}/" /etc/passwd
+if [ "$PUID" != "1000" ] || [ "$PGID" != "1000" ] || [ "$USER" != "docker" ]; then
+  sed -i -e "s/^docker:\([^:]*\):[0-9]*:\([0-9]*\)/${USER}:\1:${PUID}:\2/" /etc/passwd
+  sed -i -e "s/^${USER}:\([^:]*\):[0-9]*:\([0-9]*\)/${USER}:\1:${PUID}:${PGID}/" /etc/passwd
+  sed -i -e "s/^docker:\([^:]*\):[0-9]*/${USER}:\1:${PGID}/" /etc/group
+else
+  echo "  ${norm}[${green}+${norm}] No changes needed for user and group"
 fi
-if [ -n "${PUID}" ] && [ "${PUID}" != "$(id -u ${USER})" ]; then
-  sed -i -e "s/^${USER}:\([^:]*\):[0-9]*:\([0-9]*\)/${USER}:\1:${PUID}:\2/" /etc/passwd
-fi
+
+# Init
+echo "  ${norm}[${green}+${norm}] Setting files and folders..."
+mkdir -p \
+  /etc/nginx/conf.d \
+  /var/cache/nginx \
+  /var/lib/nginx \
+  /var/run/nginx \
+  /var/run/php-fpm
+
+# Perms
+echo "  ${norm}[${green}+${norm}] Setting user permissions..."
+chown -R ${USER}: \
+  /var/cache/nginx \
+  /var/lib/nginx \
+  /var/log/nginx \
+  /var/log/php83 \
+  /var/run/nginx \
+  /var/run/php-fpm \
+  #/var/www
 
 # PHP
 echo "  ${norm}[${green}+${norm}] Setting PHP-FPM configuration..."
@@ -89,26 +109,6 @@ sed -e "s|memory_limit.*|memory_limit = ${MEMORY_LIMIT}|g" \
 echo "  ${norm}[${green}+${norm}] Setting OpCache configuration..."
 sed -e "s/@OPCACHE_MEM_SIZE@/$OPCACHE_MEM_SIZE/g" \
     -i /etc/php83/conf.d/opcache.ini
-
-# Init
-echo "  ${norm}[${green}+${norm}] Setting files and folders..."
-mkdir -p \
-  /etc/nginx/conf.d \
-  /var/cache/nginx \
-  /var/lib/nginx \
-  /var/run/nginx \
-  /var/run/php-fpm
-
-# Perms
-echo "  ${norm}[${green}+${norm}] Fixing perms..."
-chown -R ${USER}: \
-  /var/cache/nginx \
-  /var/lib/nginx \
-  /var/log/nginx \
-  /var/log/php83 \
-  /var/run/nginx \
-  /var/run/php-fpm \
-  #/var/www
 
 echo -e "  ${norm}[${green}+${norm}] Settings services...\n"
 mkdir -p /etc/services.d/nginx

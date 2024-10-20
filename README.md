@@ -64,7 +64,7 @@ Edit the compose file with your preferences and run the following command:
 
 ```shell
 git clone https://github.com/k44sh/nginx.git
-mkdir {config,data}
+mkdir -p {config,data}
 docker-compose up -d
 docker-compose logs -f
 ```
